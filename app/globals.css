@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* 1. FORCE TAILWIND V4 TO SCAN YOUR NEXT.JS APP DIRECTORY */
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+@source "./**/*.{js,ts,jsx,tsx,mdx}";
+
+/* 2. KEEP YOUR CUSTOM VARIANTS */
+@custom-variant dark (&:is(.dark *));
+
+/* 
+  Note: In Tailwind v4, you NO LONGER need:
+  @tailwind base; 
+  @tailwind components; 
+  @tailwind utilities;
+  The '@import "tailwindcss";' line at the top handles all of this automatically!
+*/
