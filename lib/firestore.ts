@@ -48,7 +48,11 @@ export interface InterviewDoc {
 }
 
 export async function addInterview(uid: string, data: Omit<InterviewDoc, 'id' | 'createdAt' | 'completedAt'>) {
-  const ref = await addDoc(userCol(uid, 'interviews'), { ...data, createdAt: serverTimestamp(), completedAt: null });
+  const ref = await addDoc(userCol(uid, 'interviews'), {
+    ...data,
+    createdAt:   serverTimestamp(),
+    completedAt: serverTimestamp(),   // mark as completed immediately on save
+  });
   return ref.id;
 }
 

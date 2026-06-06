@@ -4,8 +4,19 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Video, VideoOff, PhoneOff, Mic, MicOff, ArrowLeft, Maximize2, Minimize2, Wifi, PanelRight } from 'lucide-react';
 import { SessionEvent, AgentEventsEnum } from '@heygen/liveavatar-web-sdk';
 import { conceptFromQuestion, buildDiagram } from '@/lib/diagrams';
+import { useAuth } from '@/contexts/AuthContext';
+import { addInterview, type InterviewType, type ExperienceLevel } from '@/lib/firestore';
+import InterviewResults, { type SessionData } from './InterviewResults';
 
 type SessionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+
+export interface InterviewConfig {
+  title:         string;
+  field:         string;
+  type:          InterviewType;
+  level:         ExperienceLevel;
+  questionCount: number;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SVG Renderer — makes the GPT-generated SVG responsive inside the panel
@@ -199,11 +210,15 @@ function SessionTimer({ active }: { active: boolean }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InterviewRoom({
   contextId,
+  config,
   onBack,
 }: {
   contextId?: string;
-  onBack: () => void;
+  config?:    InterviewConfig;
+  onBack:     () => void;
 }) {
+  const { user } = useAuth();
+
   const [sessionStatus, setSessionStatus]         = useState<SessionStatus>('idle');
   const [statusMsg, setStatusMsg]                 = useState('Ready');
   const [isVideoOn, setIsVideoOn]                 = useState(true);
@@ -212,10 +227,12 @@ export default function InterviewRoom({
   const [avatarSpeaking, setAvatarSpeaking]       = useState(false);
   const [whiteboardSvg, setWhiteboardSvg]         = useState<string | null>(null);
   const [whiteboardVisible, setWhiteboardVisible] = useState(false);
-  const [isGenerating, setIsGenerating]           = useState(false);
   const [lastQuestion, setLastQuestion]           = useState('');
   const [userStream, setUserStream]               = useState<MediaStream | null>(null);
   const [isFullscreen, setIsFullscreen]           = useState(false);
+
+  // Post-session results
+  const [sessionData, setSessionData]             = useState<SessionData | null>(null);
 
   const videoRef   = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<any>(null);
@@ -223,13 +240,16 @@ export default function InterviewRoom({
   // Caption accumulator
   const captionBuffer = useRef('');
 
-  // ── User question capture ─────────────────────────────────────────────────
-  // Accumulates while the user is speaking, saved on USER_SPEAK_ENDED,
-  // consumed on AVATAR_SPEAK_STARTED to generate the whiteboard diagram.
-  const userQuestionBuffer = useRef('');   // builds up during user speech
-  const userQuestionRef    = useRef('');   // complete question after user stops
-  const userQuestionFresh  = useRef(false);// true = new question not yet drawn
+  // ── Session tracking ──────────────────────────────────────────────────────
+  const sessionStartRef    = useRef<number>(0);        // Date.now() when connected
+  const userAnswers        = useRef<string[]>([]);      // one entry per USER_SPEAK_ENDED
+  const avatarQuestions    = useRef<string[]>([]);      // one entry per AVATAR_SPEAK_ENDED
+  const currentUserBuffer  = useRef('');               // accumulates current user answer
 
+  // ── User question capture ─────────────────────────────────────────────────
+  const userQuestionBuffer = useRef('');
+  const userQuestionRef    = useRef('');
+  const userQuestionFresh  = useRef(false);
 
   // ── Auto-hide timer ───────────────────────────────────────────────────────
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -245,12 +265,58 @@ export default function InterviewRoom({
     return () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
   }, [whiteboardSvg]);
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
-  const stopSession = useCallback(async () => {
+  // ── Cleanup + save session ────────────────────────────────────────────────
+  const stopSession = useCallback(async (showResults = true) => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
+
+    // Calculate duration
+    const durationSec = sessionStartRef.current
+      ? Math.round((Date.now() - sessionStartRef.current) / 1000)
+      : 0;
+
+    // Save to Firestore if session was active
+    if (user && sessionStartRef.current > 0 && config) {
+      try {
+        await addInterview(user.uid, {
+          title:         config.title,
+          field:         config.field,
+          type:          config.type,
+          level:         config.level,
+          questionCount: config.questionCount,
+          score:         null,   // score is computed client-side in results
+          duration:      durationSec,
+          status:        'completed',
+          contextId:     contextId ?? null,
+          notes:         null,
+        });
+      } catch (e) {
+        console.error('[Firestore] Failed to save interview:', e);
+      }
+    }
+
+    // Build session data for results panel
+    if (showResults && sessionStartRef.current > 0) {
+      setSessionData({
+        config: {
+          title:         config?.title ?? 'Interview Session',
+          field:         config?.field ?? 'General',
+          type:          config?.type  ?? 'mixed',
+          level:         config?.level ?? 'mid',
+          questionCount: config?.questionCount ?? 0,
+        },
+        durationSec,
+        userAnswers:    [...userAnswers.current],
+        avatarQuestions: [...avatarQuestions.current],
+        startedAt:      new Date(sessionStartRef.current),
+      });
+    }
+
+    // Stop HeyGen session and media
     try { await sessionRef.current?.stop(); } catch (_) {}
     sessionRef.current = null;
     userStream?.getTracks().forEach(t => t.stop());
+
+    // Reset state
     setUserStream(null);
     setSessionStatus('idle');
     setStatusMsg('Ready');
@@ -258,7 +324,10 @@ export default function InterviewRoom({
     setWhiteboardSvg(null);
     setWhiteboardVisible(false);
     setAvatarSpeaking(false);
-  }, [userStream]);
+    sessionStartRef.current = 0;
+    userAnswers.current     = [];
+    avatarQuestions.current = [];
+  }, [user, userStream, config, contextId]);
 
   useEffect(() => () => { stopSession(); }, []);
 
@@ -322,22 +391,31 @@ export default function InterviewRoom({
         }
         setSessionStatus('connected');
         setStatusMsg('Live');
+        sessionStartRef.current = Date.now(); // ← start timing the session
       });
 
-      // ── User speaking — capture their question ──────────────────────────
+      // ── User speaking — capture their question + answer ─────────────────
       session.on(AgentEventsEnum.USER_SPEAK_STARTED, () => {
         setStatusMsg('Listening...');
-        userQuestionBuffer.current = '';        // start fresh for this utterance
+        userQuestionBuffer.current  = '';
+        currentUserBuffer.current   = '';
       });
 
       session.on(AgentEventsEnum.USER_TRANSCRIPTION, (event: any) => {
-        // Accumulate the user's words in real time
         const chunk: string = event?.data?.text ?? event?.text ?? '';
-        if (chunk) userQuestionBuffer.current += ' ' + chunk;
+        if (chunk) {
+          userQuestionBuffer.current += ' ' + chunk;
+          currentUserBuffer.current  += ' ' + chunk;
+        }
       });
 
       session.on(AgentEventsEnum.USER_SPEAK_ENDED, () => {
         setStatusMsg('Live');
+        // Save to answers log (filter out very short utterances)
+        const answer = currentUserBuffer.current.trim();
+        if (answer.length > 15) userAnswers.current.push(answer);
+        currentUserBuffer.current = '';
+
         const question = userQuestionBuffer.current.trim();
         if (question) {
           userQuestionRef.current  = question;
@@ -372,6 +450,9 @@ export default function InterviewRoom({
 
       session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, () => {
         setAvatarSpeaking(false);
+        // Save avatar's full utterance as a "question" (filter short utterances)
+        const avatarText = captionBuffer.current.trim();
+        if (avatarText.length > 20) avatarQuestions.current.push(avatarText);
         setTimeout(() => setCaption(''), 3000);
       });
 
@@ -394,6 +475,21 @@ export default function InterviewRoom({
   }, [isMuted]);
 
   const isActive = sessionStatus === 'connected';
+  // Indicates the avatar is generating/speaking (used for UI hints)
+  const isGenerating = avatarSpeaking;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Show results after session ends
+  // ─────────────────────────────────────────────────────────────────────────
+  if (sessionData) {
+    return (
+      <InterviewResults
+        data={sessionData}
+        onRetry={() => { setSessionData(null); }}
+        onHome={() => { setSessionData(null); onBack(); }}
+      />
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -660,7 +756,7 @@ export default function InterviewRoom({
                 />
 
                 <button
-                  onClick={stopSession}
+                  onClick={() => stopSession()}
                   className="flex items-center justify-center w-10 h-10 rounded-xl transition-all hover:scale-105"
                   style={{
                     background: 'rgba(239,68,68,0.2)',

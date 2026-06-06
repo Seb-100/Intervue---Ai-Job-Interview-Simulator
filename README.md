@@ -34,3 +34,23 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+//working functionalities
+
+Feature	                                                Status
+Firebase auth (email + Google)	                        ✅ Working
+Sign-in / Sign-up pages	                                ✅ Working
+Auth guard on dashboard                             	✅ Working
+Sidebar with user profile	                            ✅ Working
+Job Tracker (Firestore CRUD)	                        ✅ Working
+CV Reviewer (keyword analysis)	                        ✅ Working
+CV Builder (Firestore save/load)	                    ✅ Working
+Cover Letter Generator (Firestore)	                    ✅ Working
+Whiteboard diagrams (40+ concepts)	                    ✅ Working
+Trash2 in CVBuilder	                                    ✅ Fine (local SVG component)
+HistoryPanel	                                        ✅ Now reads from Firestore
+StatsOverview	                                        ✅ Now reads from Firestore
+Interview sessions save to Firestore	                ✅ Fixed (was the critical missing piece)
+Interview setup modal	                                ✅ New — configure field, type, level, Q count
+STAR results panel	                                    ✅ New
+PDF export	                                            ✅ New (browser print → A4)
