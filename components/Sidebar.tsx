@@ -1,52 +1,59 @@
-"use client";
+'use client';
 
 import React from 'react';
-import Link from'next/link'
-import { LayoutDashboard, Video, History, LogOut, ShieldAlert, FileText, Edit3, Mail, Briefcase } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Video, History, LogOut, FileText, Edit3, Mail, Briefcase } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface SidebarProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
-}
+interface SidebarProps { currentView: string; onViewChange: (view: string) => void; }
+
+const MENU = [
+  { id:'dashboard',    label:'Dashboard',     icon:LayoutDashboard },
+  { id:'interview',    label:'Interview Room', icon:Video },
+  { id:'history',      label:'History',        icon:History },
+  { id:'cv-review',    label:'CV Reviewer',    icon:FileText },
+  { id:'cv-builder',   label:'CV Builder',     icon:Edit3 },
+  { id:'cover-letter', label:'Cover Letter',   icon:Mail },
+  { id:'job-tracker',  label:'Job Tracker',    icon:Briefcase },
+];
 
 export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
-  const menuItems = [
-    { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
-    { id: 'interview', label: 'Live Interview Room', icon: Video },
-    { id: 'history', label: 'Session History Logs', icon: History },
-    { id: 'cv-review', label: 'CV Reviewer', icon: FileText },
-    { id: 'cv-builder', label: 'CV Builder', icon: Edit3 },
-    { id: 'cover-letter', label: 'Cover Letter', icon: Mail },
-    { id: 'job-tracker', label: 'Job Tracker', icon: Briefcase },
-  ];
+  const { profile, logOut } = useAuth();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await logOut();
+    router.push('/sign-in');
+  }
+
+  const initials = profile?.name
+    ? profile.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
 
   return (
-    <aside className="w-64 bg-white border-r border-zinc-200 flex flex-col justify-between p-5 shrink-0 z-20">
-      <div className="space-y-8">
-        <div className="flex items-center gap-2.5 px-2">
-          {/* <div className="p-2 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-100">
-            <ShieldAlert size={16} className="stroke-[2.5]" />
-          </div> */}
-          <Link href = '/'><span className="text-zinc-950 text-lg font-black tracking-tight">
-            Inter<span className="text-blue-600 fornt-serif italic">vue.ai</span>
-          </span></Link>
+    <aside className="w-60 bg-white border-r border-zinc-200/60 flex flex-col justify-between py-5 px-3 shrink-0 z-20">
+      <div className="space-y-6">
+        {/* Logo */}
+        <div className="px-3 pb-1">
+          <Link href="/">
+            <span className="text-zinc-950 text-lg font-black tracking-tight">
+              Inter<span className="text-blue-600 font-serif italic">vue.ai</span>
+            </span>
+          </Link>
         </div>
 
-        <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const IconComponent = item.icon;
-            const isSelected = currentView === item.id;
+        {/* Nav */}
+        <nav className="space-y-0.5">
+          {MENU.map(item => {
+            const Icon = item.icon;
+            const active = currentView === item.id;
             return (
-              <button
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all ${
-                  isSelected 
-                    ? 'bg-zinc-950 text-white shadow-md' 
-                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
-                }`}
-              >
-                <IconComponent size={16} />
+              <button key={item.id} onClick={() => onViewChange(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium tracking-tight transition-all ${
+                  active ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}>
+                <Icon size={15} className={active ? 'text-white' : 'text-zinc-400'} />
                 {item.label}
               </button>
             );
@@ -54,10 +61,25 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
         </nav>
       </div>
 
-      <div className="border-t border-zinc-100 pt-4">
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50/60 transition-all">
-          <LogOut size={14} />
-          End Workspace Session
+      {/* User + logout */}
+      <div className="space-y-1 border-t border-zinc-100 pt-4">
+        {profile && (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-all cursor-default">
+            <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center shrink-0 overflow-hidden">
+              {profile.photoURL
+                ? <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover"/>
+                : <span className="text-[11px] font-bold text-white">{initials}</span>
+              }
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-zinc-900 truncate">{profile.name}</p>
+              <p className="text-[10px] text-zinc-400 truncate">{profile.email}</p>
+            </div>
+          </div>
+        )}
+        <button onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 transition-all">
+          <LogOut size={14}/> Sign out
         </button>
       </div>
     </aside>
