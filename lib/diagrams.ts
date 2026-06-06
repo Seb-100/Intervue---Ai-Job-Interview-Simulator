@@ -62,6 +62,58 @@ const KEYWORD_MAP: [RegExp, string][] = [
   [/supply.*(demand)|demand.*(supply)|market.?equilibrium/i,       'supply-demand'],
   [/\bgdp\b|gross.?domestic.?product|national.?income/i,           'gdp'],
   [/inflation|price.?level|consumer.?price/i,                      'inflation'],
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FRENCH KEYWORDS — map to the same diagrams (no new SVGs needed)
+  // ══════════════════════════════════════════════════════════════════════════
+  // CS en français
+  [/liste.?(doublement.?chaîn|doublement.?liée)/i,                 'doubly-linked-list'],
+  [/liste.?(chaîn|liée|simplement)/i,                              'linked-list'],
+  [/\bpile\b(?!.*(batterie|pile.?électrique))/i,                   'stack'],
+  [/file.?(d.?attente|priorité)/i,                                 'queue'],
+  [/\btas\b|monceau|arbre.?de.?priorité/i,                        'heap'],
+  [/arbre.?(binaire.?de.?recherche|ABR)\b/i,                       'bst'],
+  [/arbre.?binaire/i,                                              'binary-tree'],
+  [/table.?de.?hachage|carte.?de.?hachage|dictionnaire/i,         'hash-map'],
+  [/\bgraphe\b|liste.?d.?adjacence/i,                              'graph'],
+  [/recherche.?(binaire|dichotomique)/i,                           'binary-search'],
+  [/tri.?à.?bulles/i,                                              'bubble-sort'],
+  [/tri.?fusion/i,                                                 'merge-sort'],
+  [/tri.?rapide/i,                                                 'quick-sort'],
+  [/\btri\b(?!.*(par|en))/i,                                       'bubble-sort'],
+  [/notation.?O|complexité.?(temporelle|spatiale)/i,               'big-o'],
+  [/double.?pointeur|deux.?pointeurs/i,                            'two-pointers'],
+  [/fenêtre.?glissante/i,                                         'sliding-window'],
+  [/programmation.?dynamique/i,                                    'dynamic-programming'],
+  [/récursivité|récursion/i,                                       'recursion'],
+  [/tableau.?(de.?valeurs|indexé)|structure.?de.?tableau/i,        'array'],
+  // Biologie en français
+  [/\bneurone\b|axone|dendrite|synapse/i,                          'neuron'],
+  [/\bADN\b|acide.?désoxyribonucléique|double.?hélice|paire.?de.?base/i, 'dna'],
+  [/cellule.?animale|organite/i,                                   'cell'],
+  [/photosynthèse|chloroplaste|chlorophylle/i,                     'photosynthesis'],
+  [/\bmitose\b|méiose|division.?cellulaire/i,                      'mitosis'],
+  [/chaîne.?alimentaire|réseau.?trophique/i,                       'food-chain'],
+  // Chimie en français
+  [/structure.?atomique|modèle.?de.?Bohr/i,                        'atomic-structure'],
+  [/échelle.?de.?pH|acidité|pH.*(acide|base)/i,                   'ph-scale'],
+  [/liaison.?(ionique|covalente|chimique)/i,                       'chemical-bond'],
+  [/tableau.?périodique|groupe.?d.?éléments/i,                     'periodic-table'],
+  // Physique en français
+  [/circuit.?électrique|loi.?d.?Ohm/i,                            'circuit'],
+  [/\bonde\b.*(longueur|amplitude|fréquence)|onde.?transversale/i, 'wave'],
+  [/diagramme.?des.?forces|deuxième.?loi.?de.?Newton/i,           'forces'],
+  [/spectre.?électromagnétique/i,                                  'em-spectrum'],
+  [/cinématique|graphe.?vitesse.?temps/i,                          'kinematics'],
+  // Mathématiques en français
+  [/diagramme.?de.?Venn|théorie.?des.?ensembles/i,                 'venn-diagram'],
+  [/fonction.?quadratique|parabole/i,                              'quadratic'],
+  [/arbre.?de.?probabilité|probabilité.?conditionnelle/i,          'probability-tree'],
+  [/multiplication.?de.?matrices/i,                                'matrix'],
+  [/distribution.?normale|courbe.?de.?Gauss/i,                     'normal-distribution'],
+  // Économie en français
+  [/offre.*(demande)|demande.*(offre)|équilibre.?du.?marché/i,     'supply-demand'],
+  [/\bPIB\b|produit.?intérieur.?brut/i,                           'gdp'],
 ];
 
 export function conceptFromQuestion(question: string): string | null {

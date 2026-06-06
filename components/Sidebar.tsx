@@ -3,24 +3,33 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Video, History, LogOut, FileText, Edit3, Mail, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Video, History, LogOut, FileText, Edit3, Mail, Briefcase, Zap, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePremium } from '@/contexts/PremiumContext';
 
-interface SidebarProps { currentView: string; onViewChange: (view: string) => void; }
+interface SidebarProps {
+  currentView: string;
+  onViewChange: (view: string) => void;
+  lang?: 'en' | 'fr';
+}
 
-const MENU = [
-  { id:'dashboard',    label:'Dashboard',     icon:LayoutDashboard },
-  { id:'interview',    label:'Interview Room', icon:Video },
-  { id:'history',      label:'History',        icon:History },
-  { id:'cv-review',    label:'CV Reviewer',    icon:FileText },
-  { id:'cv-builder',   label:'CV Builder',     icon:Edit3 },
-  { id:'cover-letter', label:'Cover Letter',   icon:Mail },
-  { id:'job-tracker',  label:'Job Tracker',    icon:Briefcase },
+type MenuItem = { id: string; en: string; fr: string; icon: React.ElementType };
+
+const MENU: MenuItem[] = [
+  { id:'dashboard',    en:'Dashboard',     fr:'Tableau de bord', icon:LayoutDashboard },
+  { id:'interview',    en:'Interview Room', fr:'Salle d\'entretien', icon:Video },
+  { id:'history',      en:'History',        fr:'Historique',      icon:History },
+  { id:'cv-review',    en:'CV Reviewer',    fr:'Révision CV',     icon:FileText },
+  { id:'cv-builder',   en:'CV Builder',     fr:'Créateur de CV',  icon:Edit3 },
+  { id:'cover-letter', en:'Cover Letter',   fr:'Lettre de motivation', icon:Mail },
+  { id:'job-tracker',  en:'Job Tracker',    fr:'Suivi candidatures', icon:Briefcase },
 ];
 
-export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
+export default function Sidebar({ currentView, onViewChange, lang = 'en' }: SidebarProps) {
   const { profile, logOut } = useAuth();
+  const { plan } = usePremium();
   const router = useRouter();
+  const isFr = lang === 'fr';
 
   async function handleLogout() {
     await logOut();
@@ -33,7 +42,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
 
   return (
     <aside className="w-60 bg-white border-r border-zinc-200/60 flex flex-col justify-between py-5 px-3 shrink-0 z-20">
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Logo */}
         <div className="px-3 pb-1">
           <Link href="/">
@@ -53,12 +62,43 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium tracking-tight transition-all ${
                   active ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
                 }`}>
-                <Icon size={15} className={active ? 'text-white' : 'text-zinc-400'} />
-                {item.label}
+                <Icon size={15} className={active ? 'text-white' : 'text-zinc-400'}/>
+                {isFr ? item.fr : item.en}
               </button>
             );
           })}
         </nav>
+
+        {/* Upgrade banner */}
+        {plan === 'free' && (
+          <button onClick={() => onViewChange('pricing')}
+            className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-xs font-semibold hover:from-blue-700 hover:to-violet-700 transition-all shadow-md shadow-blue-200">
+            <Zap size={14} fill="currentColor"/>
+            <div className="text-left">
+              <p>{isFr ? 'Passer à Premium' : 'Upgrade to Premium'}</p>
+              <p className="text-[10px] text-blue-200 font-normal">
+                {isFr ? 'Dès 4 900 XAF/mois' : 'From 4,900 XAF/month'}
+              </p>
+            </div>
+          </button>
+        )}
+
+        {plan === 'starter' && (
+          <button onClick={() => onViewChange('pricing')}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-xs font-semibold hover:bg-violet-100 transition-all">
+            <Crown size={13}/>
+            {isFr ? 'Passer à Pro' : 'Upgrade to Pro'}
+          </button>
+        )}
+
+        {plan === 'pro' && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200">
+            <Crown size={13} className="text-violet-600"/>
+            <span className="text-xs font-semibold text-violet-700">
+              {isFr ? '👑 Plan Pro actif' : '👑 Pro plan active'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* User + logout */}
@@ -79,7 +119,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
         )}
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 transition-all">
-          <LogOut size={14}/> Sign out
+          <LogOut size={14}/> {isFr ? 'Déconnexion' : 'Sign out'}
         </button>
       </div>
     </aside>

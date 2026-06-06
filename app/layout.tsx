@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PremiumProvider } from '@/contexts/PremiumContext';
 
 const geistSans = Geist({ variable: '--font-geist-sans', weight: '400', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', weight: '400', subsets: ['latin'] });
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geistSans.className} ${geistMono.className}`}>
         <AuthProvider>
-          {children}
+          <PremiumProvider>
+            {children}
+          </PremiumProvider>
         </AuthProvider>
       </body>
     </html>

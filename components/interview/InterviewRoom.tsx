@@ -497,13 +497,13 @@ export default function InterviewRoom({
   return (
     <div
       className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ background: '#080810', fontFamily: "'SF Pro Display', -apple-system, sans-serif" }}
+      style={{  fontFamily: "'SF Pro Display', -apple-system, sans-serif" }}
     >
       {/* ── Top bar ── */}
       <div
         className="flex items-center justify-between px-5 py-3 shrink-0 z-30"
         style={{
-          background: 'rgba(8,8,16,0.92)',
+          
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           backdropFilter: 'blur(12px)',
         }}
@@ -512,7 +512,7 @@ export default function InterviewRoom({
           <button
             onClick={onBack}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all hover:bg-white/5"
-            style={{ color: '#64748b' }}
+            style={{ color: '#1d2126' }}
           >
             <ArrowLeft size={14} /> Back
           </button>
@@ -569,7 +569,7 @@ export default function InterviewRoom({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm font-black tracking-tight" style={{ color: '#e2e8f0' }}>
+          <span className="text-sm font-black tracking-tight" style={{ color: '#131314' }}>
             Inter<span className="text-blue-500 font-serif italic">vue</span>
             <span style={{ color: '#22c55e' }} className="font-serif italic">.ai</span>
           </span>
@@ -616,7 +616,7 @@ export default function InterviewRoom({
 
           {/* Idle overlay */}
           {!isActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+            <div className="absolute inset-0 flex flex-col items-center ml-35 justify-center z-10">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
                   className="w-80 h-80 rounded-full"
@@ -638,7 +638,7 @@ export default function InterviewRoom({
                   <Video size={32} style={{ color: '#378ADD' }} />
                 </div>
                 <div className="text-center space-y-2">
-                  <h2 className="text-xl font-bold" style={{ color: '#e2e8f0' }}>
+                  <h2 className="text-xl font-bold" style={{ color: '#000000' }}>
                     Interview Room
                   </h2>
                   <p className="text-sm" style={{ color: '#475569' }}>
