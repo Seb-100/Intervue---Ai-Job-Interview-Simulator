@@ -5,7 +5,7 @@ import { Video, VideoOff, PhoneOff, Mic, MicOff, ArrowLeft, Maximize2, Minimize2
 import { SessionEvent, AgentEventsEnum } from '@heygen/liveavatar-web-sdk';
 import { conceptFromQuestion, buildDiagram } from '@/lib/diagrams';
 import { useAuth } from '@/contexts/AuthContext';
-import { addInterview, type InterviewType, type ExperienceLevel } from '@/lib/firestore';
+import { addInterview, updateInterview, type InterviewType, type ExperienceLevel } from '@/lib/firestore';
 import InterviewResults, { type SessionData } from './InterviewResults';
 
 type SessionStatus = 'idle' | 'connecting' | 'connected' | 'error';
@@ -234,8 +234,9 @@ export default function InterviewRoom({
   // Post-session results
   const [sessionData, setSessionData]             = useState<SessionData | null>(null);
 
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const sessionRef = useRef<any>(null);
+  const videoRef            = useRef<HTMLVideoElement>(null);
+  const sessionRef          = useRef<any>(null);
+  const savedInterviewIdRef = useRef<string | null>(null);
 
   // Caption accumulator
   const captionBuffer = useRef('');
@@ -275,20 +276,21 @@ export default function InterviewRoom({
       : 0;
 
     // Save to Firestore if session was active
-    if (user && sessionStartRef.current > 0 && config) {
+    if (user && sessionStartRef.current > 0) {
       try {
-        await addInterview(user.uid, {
-          title:         config.title,
-          field:         config.field,
-          type:          config.type,
-          level:         config.level,
-          questionCount: config.questionCount,
-          score:         null,   // score is computed client-side in results
+        const id = await addInterview(user.uid, {
+          title:         config?.title         ?? 'Interview Session',
+          field:         config?.field         ?? 'General',
+          type:          config?.type          ?? 'mixed',
+          level:         config?.level         ?? 'mid',
+          questionCount: config?.questionCount ?? 0,
+          score:         null,   // updated after results are shown
           duration:      durationSec,
           status:        'completed',
           contextId:     contextId ?? null,
           notes:         null,
         });
+        savedInterviewIdRef.current = id;
       } catch (e) {
         console.error('[Firestore] Failed to save interview:', e);
       }
@@ -329,7 +331,19 @@ export default function InterviewRoom({
     avatarQuestions.current = [];
   }, [user, userStream, config, contextId]);
 
-  useEffect(() => () => { stopSession(); }, []);
+  // Keep a ref so the unmount cleanup always calls the latest stopSession
+  const stopSessionRef = useRef(stopSession);
+  useEffect(() => { stopSessionRef.current = stopSession; });
+  useEffect(() => () => { stopSessionRef.current(false); }, []);
+
+  const handleSaveScore = useCallback(async (score: number) => {
+    if (!user || !savedInterviewIdRef.current) return;
+    try {
+      await updateInterview(user.uid, savedInterviewIdRef.current, { score });
+    } catch (e) {
+      console.error('[Firestore] Failed to update score:', e);
+    }
+  }, [user]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // generateVisualization
@@ -487,6 +501,7 @@ export default function InterviewRoom({
         data={sessionData}
         onRetry={() => { setSessionData(null); }}
         onHome={() => { setSessionData(null); onBack(); }}
+        onSaveScore={handleSaveScore}
       />
     );
   }
@@ -629,13 +644,16 @@ export default function InterviewRoom({
               </div>
               <div className="relative z-10 flex flex-col items-center gap-6">
                 <div
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                  className="w-40 h-20 rounded-2xl  flex items-center justify-center"
                   style={{
                     background: 'rgba(56,132,221,0.1)',
                     border: '1px solid rgba(56,132,221,0.2)',
                   }}
                 >
-                  <Video size={32} style={{ color: '#378ADD' }} />
+                  <Video size={32} style={{ color: '#378ADD' }} className='mr-2'/>
+                  <span className="text-2sm font-black tracking-tight" style={{ color: '#131314' }}> Inter</span>
+                  <span className="text-blue-500 text-2sm font-serif italic">vue</span>
+                  <span style={{ color: '#22c55e' }} className="font-serif text-2sm italic">.ai</span>
                 </div>
                 <div className="text-center space-y-2">
                   <h2 className="text-xl font-bold" style={{ color: '#000000' }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import {
   CheckCircle, AlertCircle, TrendingUp, Clock, MessageSquare,
   Star, Download, RotateCcw, Home, Award, ChevronRight,
@@ -188,14 +188,21 @@ function Badge({ type }: { type: 'excellent' | 'good' | 'needs work' }) {
 
 // ─── Main results component ────────────────────────────────────────────────────
 interface InterviewResultsProps {
-  data:     SessionData;
-  onRetry:  () => void;
-  onHome:   () => void;
+  data:          SessionData;
+  onRetry:       () => void;
+  onHome:        () => void;
+  onSaveScore?:  (score: number) => void;
 }
 
-export default function InterviewResults({ data, onRetry, onHome }: InterviewResultsProps) {
+export default function InterviewResults({ data, onRetry, onHome, onSaveScore }: InterviewResultsProps) {
   const { overall, dimensions, highlights, improvements } = useMemo(() => analyze(data), [data]);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Persist the computed score to Firestore once, on mount
+  useEffect(() => {
+    onSaveScore?.(overall);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const durationMin = Math.round(data.durationSec / 60);
   const dateStr     = data.startedAt.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
