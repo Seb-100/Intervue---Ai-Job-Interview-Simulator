@@ -32,9 +32,6 @@ MODELS_DIR = Path(__file__).parent / "models"
 # ── Global model handles ──────────────────────────────────────────────────────
 salary_model   = None
 salary_encoder = None
-sentence_model = None
-good_embeddings = None
-bad_embeddings  = None
 
 
 # ── Reference answers for semantic scoring ────────────────────────────────────
@@ -70,38 +67,28 @@ BAD_ANSWERS = [
 # ── Lifespan: load models once at startup ─────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global salary_model, salary_encoder, sentence_model, good_embeddings, bad_embeddings
+    global salary_model, salary_encoder
 
-    # 1. Salary model — auto-train if not present (needed for cloud deployments)
+    # Salary model — auto-train if not present (needed for cloud deployments)
     m_path = MODELS_DIR / "salary_model.joblib"
     e_path = MODELS_DIR / "salary_encoder.joblib"
     if not (m_path.exists() and e_path.exists()):
-        print("⚙️  Salary model not found — training now (takes ~5s)...")
+        print("Salary model not found — training now (takes ~5s)...")
         try:
             import subprocess, sys
             subprocess.run(
                 [sys.executable, str(Path(__file__).parent / "train_salary.py")],
                 check=True
             )
-            print("✅ Salary model trained")
+            print("Salary model trained")
         except Exception as train_err:
-            print(f"⚠️  Auto-train failed: {train_err}")
+            print(f"Auto-train failed: {train_err}")
     if m_path.exists() and e_path.exists():
         salary_model   = joblib.load(m_path)
         salary_encoder = joblib.load(e_path)
-        print("✅ Salary model loaded")
+        print("Salary model loaded")
     else:
-        print("⚠️  Salary model unavailable — salary endpoint will return estimates only")
-
-    # 2. Sentence transformer + reference embeddings
-    try:
-        from sentence_transformers import SentenceTransformer, util as st_util
-        sentence_model  = SentenceTransformer("all-MiniLM-L6-v2")
-        good_embeddings = sentence_model.encode(GOOD_ANSWERS, convert_to_tensor=True)
-        bad_embeddings  = sentence_model.encode(BAD_ANSWERS,  convert_to_tensor=True)
-        print("✅ Sentence transformer + embeddings ready")
-    except Exception as e:
-        print(f"⚠️  Sentence transformer unavailable: {e}")
+        print("Salary model unavailable — salary endpoint will use lookup table")
 
     yield  # app runs here
 
@@ -124,8 +111,8 @@ def health():
     return {
         "status": "ok",
         "models": {
-            "salary":      salary_model   is not None,
-            "embeddings":  sentence_model is not None,
+            "salary":      salary_model is not None,
+            "embeddings":  True,   # TF-IDF always available (no download needed)
         },
     }
 
@@ -381,16 +368,8 @@ def ats_score(req: ATSRequest):
     matched, missing = _match_cv_keywords(req.cv_text, jd_keywords)
     keyword_pct = min(100, round(len(matched) / max(len(jd_keywords), 1) * 100))
 
-    # ── Semantic similarity ─────────────────────────────────────────────────
-    if jd and sentence_model:
-        try:
-            from sentence_transformers import util as st_util
-            cv_emb  = sentence_model.encode(req.cv_text[:1200], convert_to_tensor=True)
-            jd_emb  = sentence_model.encode(jd[:1200], convert_to_tensor=True)
-            sem_score = round(float(st_util.cos_sim(cv_emb, jd_emb)) * 100)
-        except Exception:
-            sem_score = round(keyword_pct * 0.9)
-    elif jd:
+    # ── Semantic similarity (TF-IDF cosine — lightweight, no external model) ───
+    if jd:
         sem_score = round(_tfidf_cosine(req.cv_text, jd) * 100)
     else:
         sem_score = keyword_pct
@@ -482,7 +461,7 @@ def ats_score(req: ATSRequest):
         "word_count":       word_count,
         "has_metrics":      has_metrics,
         "verb_count":       verb_hits,
-        "ai_enhanced":      sentence_model is not None,
+        "ai_enhanced":      True,
     }
 
 
@@ -634,20 +613,12 @@ def answer_score(req: AnswerRequest):
     word_count = len(words)
     sentences  = [s.strip() for s in re.split(r"[.!?]+", ans) if len(s.strip()) > 5]
 
-    # ── Semantic quality (vs good/bad reference answers) ─────────────────────
-    if sentence_model and good_embeddings is not None:
-        try:
-            from sentence_transformers import util as st_util
-            ans_emb   = sentence_model.encode(ans, convert_to_tensor=True)
-            good_sims = st_util.cos_sim(ans_emb, good_embeddings)[0]
-            bad_sims  = st_util.cos_sim(ans_emb, bad_embeddings)[0]
-            max_good  = float(good_sims.max())
-            max_bad   = float(bad_sims.max())
-            semantic  = max(0, min(100, round((max_good - max_bad * 0.45) * 130)))
-        except Exception:
-            semantic = 50
-    else:
-        semantic = 50
+    # ── Semantic quality (TF-IDF cosine vs reference answers) ────────────────
+    good_sims = [_tfidf_cosine(ans, ref) for ref in GOOD_ANSWERS]
+    bad_sims  = [_tfidf_cosine(ans, ref) for ref in BAD_ANSWERS]
+    max_good  = max(good_sims) if good_sims else 0.0
+    max_bad   = max(bad_sims)  if bad_sims  else 0.0
+    semantic  = max(0, min(100, round((max_good - max_bad * 0.4) * 140)))
 
     # ── STAR structure ────────────────────────────────────────────────────────
     situation = bool(re.search(
@@ -740,5 +711,5 @@ def answer_score(req: AnswerRequest):
         "word_count":   word_count,
         "has_numbers":  has_nums,
         "filler_count": len(fillers),
-        "ai_enhanced":  sentence_model is not None,
+        "ai_enhanced":  True,
     }
