@@ -13,9 +13,9 @@ export default function Footer() {
         {/* Brand Column */}
         <div className="md:col-span-4 space-y-6">
           <div className="flex items-center gap-3 group">
-            <div className="p-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-100 flex items-center justify-center">
+            {/* <div className="p-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-100 flex items-center justify-center">
               <Radio size={20} className="stroke-[2.5]" />
-            </div>
+            </div> */}
             <span className="text-zinc-900 text-2xl tracking-tighter">
               <span className="font-bold text-white">Inter</span>
               <span className="text-blue-600 font-serif italic tracking-normal ml-0.5">vue</span>
