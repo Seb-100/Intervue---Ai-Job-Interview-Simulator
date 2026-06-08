@@ -72,15 +72,26 @@ BAD_ANSWERS = [
 async def lifespan(app: FastAPI):
     global salary_model, salary_encoder, sentence_model, good_embeddings, bad_embeddings
 
-    # 1. Salary model
+    # 1. Salary model — auto-train if not present (needed for cloud deployments)
     m_path = MODELS_DIR / "salary_model.joblib"
     e_path = MODELS_DIR / "salary_encoder.joblib"
+    if not (m_path.exists() and e_path.exists()):
+        print("⚙️  Salary model not found — training now (takes ~5s)...")
+        try:
+            import subprocess, sys
+            subprocess.run(
+                [sys.executable, str(Path(__file__).parent / "train_salary.py")],
+                check=True
+            )
+            print("✅ Salary model trained")
+        except Exception as train_err:
+            print(f"⚠️  Auto-train failed: {train_err}")
     if m_path.exists() and e_path.exists():
         salary_model   = joblib.load(m_path)
         salary_encoder = joblib.load(e_path)
         print("✅ Salary model loaded")
     else:
-        print("⚠️  Salary model not found — run: python train_salary.py")
+        print("⚠️  Salary model unavailable — salary endpoint will return estimates only")
 
     # 2. Sentence transformer + reference embeddings
     try:
@@ -99,7 +110,7 @@ app = FastAPI(title="Intervue ML Service", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app"],
+    allow_origins=["*"],   # Allows Vercel, localhost, and any future domain
     allow_methods=["*"],
     allow_headers=["*"],
 )

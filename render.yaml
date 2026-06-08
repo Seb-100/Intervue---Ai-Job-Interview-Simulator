@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: intervue-ml-service
+    runtime: python
+    rootDir: ml-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: SENTENCE_TRANSFORMERS_HOME
+        value: /opt/render/project/src/.cache/sentence_transformers
