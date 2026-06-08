@@ -295,6 +295,11 @@ export default function DashboardPage() {
     if (!loading && !user) router.push('/sign-in');
   }, [user, loading, router]);
 
+  // Pre-warm the ML service on dashboard load (Render free tier spins down after 15min)
+  useEffect(() => {
+    fetch('/api/ml/wake').catch(() => {}); // fire-and-forget, never blocks UI
+  }, []);
+
   if (loading || !user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#F9F8F6]">

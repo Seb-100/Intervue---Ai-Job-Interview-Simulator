@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(10_000),
+      signal:  AbortSignal.timeout(35_000),   // 35s — covers Render free tier cold start
     });
 
     if (!res.ok) {
